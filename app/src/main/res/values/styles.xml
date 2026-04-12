@@ -62,8 +62,11 @@
         <item name="android:actionBarStyle">@style/NoteActionBarStyle</item>
     </style>
 
+<!--    <style name="NoteActionBarStyle" parent="@android:style/Widget.Holo.Light.ActionBar.Solid">-->
+<!--        <item name="android:displayOptions" />-->
+<!--        <item name="android:visibility">gone</item>-->
+<!--    </style>-->
     <style name="NoteActionBarStyle" parent="@android:style/Widget.Holo.Light.ActionBar.Solid">
-        <item name="android:displayOptions" />
-        <item name="android:visibility">gone</item>
+        <item name="android:visibility">visible</item>
     </style>
 </resources>
