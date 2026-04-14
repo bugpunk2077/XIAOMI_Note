@@ -39,6 +39,10 @@
     <string name="file_path">/MIUI/notes/</string>
     <string name="file_name_txt_format">notes_%s.txt</string>
     <!-- notes list string -->
+
+    <string name="menu_background1">Background: background1</string>
+    <string name="menu_background2">Background: background2</string>
+
     <string name="format_folder_files_count">(%d)</string>
     <string name="menu_create_folder">New Folder</string>
     <string name="menu_export_text">Export text</string>

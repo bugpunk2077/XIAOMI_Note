@@ -79,7 +79,9 @@ import java.io.InputStreamReader;
 import java.util.HashSet;
 
 public class NotesListActivity extends Activity implements OnClickListener, OnItemLongClickListener {
+    private int mode=0;
     private static final int FOLDER_NOTE_LIST_QUERY_TOKEN = 0;
+
 
     private static final int FOLDER_LIST_QUERY_TOKEN      = 1;
 
@@ -139,6 +141,13 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.note_list);
+
+
+         getWindow().setBackgroundDrawableResource(R.drawable.background1);
+         getWindow().setBackgroundDrawableResource(R.drawable.background2);
+
+
+
         initResources();
 
         /**
@@ -769,13 +778,26 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         } else {
             Log.e(TAG, "Wrong state:" + mState);
         }
+
+        if(mode==-1){
+            menu.findItem(R.id.menu_background1).setVisible(false);
+        }
+        else if(mode==0){
+            menu.findItem(R.id.menu_background2).setVisible(false);
+        }
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
-        if (itemId == R.id.menu_new_folder) {
+        if (itemId == R.id.menu_background1) {
+            mode=-1;
+            getWindow().setBackgroundDrawableResource(R.drawable.background1);
+        } else if (itemId == R.id.menu_background2) {
+            mode=0;
+            getWindow().setBackgroundDrawableResource(R.drawable.background2);
+        } else if (itemId == R.id.menu_new_folder) {
             showCreateOrModifyFolderDialog(true);
         } else if (itemId == R.id.menu_export_text) {
             exportNoteToText();

@@ -36,4 +36,14 @@
     <item
         android:id="@+id/menu_search"
         android:title="@string/menu_search"/>
+
+    <item
+        android:id="@+id/menu_background1"
+        android:title="@string/menu_background1"/>
+
+    <item
+        android:id="@+id/menu_background2"
+        android:title="@string/menu_background2"/>
+
+
 </menu>
