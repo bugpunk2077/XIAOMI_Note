@@ -1040,103 +1040,197 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         }
     };
 
+    /**
+     * 上下文菜单关闭时的回调方法
+     * 作用：菜单关闭后，移除列表的上下文菜单监听，避免异常和重复触发
+     */
     @Override
     public void onContextMenuClosed(Menu menu) {
+        // 如果笔记列表不为空，清空它的上下文菜单创建监听器
         if (mNotesListView != null) {
             mNotesListView.setOnCreateContextMenuListener(null);
         }
+        // 调用父类的方法，执行系统默认逻辑
         super.onContextMenuClosed(menu);
     }
 
+    /**
+     * 上下文菜单条目点击事件
+     * 作用：处理长按文件夹弹出菜单的点击操作（查看、删除、重命名）
+     */
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        // 安全校验：如果长按的文件夹数据为空，打印日志并直接返回
         if (mFocusNoteDataItem == null) {
             Log.e(TAG, "The long click data item is null");
             return false;
         }
+
+        // 根据点击的菜单ID，执行对应的操作
         switch (item.getItemId()) {
+            // 点击【查看文件夹】菜单
             case MENU_FOLDER_VIEW:
+                // 打开当前长按的文件夹，查看内部笔记
                 openFolder(mFocusNoteDataItem);
                 break;
+
+            // 点击【删除文件夹】菜单
             case MENU_FOLDER_DELETE:
+                // 创建删除确认对话框
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                // 设置对话框标题
                 builder.setTitle(getString(R.string.alert_title_delete));
+                // 设置警告图标
                 builder.setIcon(android.R.drawable.ic_dialog_alert);
+                // 设置提示信息：确认删除文件夹
                 builder.setMessage(getString(R.string.alert_message_delete_folder));
+
+                // 设置确定按钮：点击后执行删除文件夹操作
                 builder.setPositiveButton(android.R.string.ok,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
+                                // 调用删除文件夹的方法
                                 deleteFolder(mFocusNoteDataItem.getId());
                             }
                         });
+                // 设置取消按钮：点击无操作，关闭弹窗
                 builder.setNegativeButton(android.R.string.cancel, null);
+                // 显示删除确认弹窗
                 builder.show();
                 break;
+
+            // 点击【重命名文件夹】菜单
             case MENU_FOLDER_CHANGE_NAME:
+                // 打开重命名对话框（false 代表重命名，而非新建）
                 showCreateOrModifyFolderDialog(false);
                 break;
+
+            // 其他未定义的菜单选项，不处理
             default:
                 break;
         }
 
+        // 返回true，表示已经处理了菜单点击事件
         return true;
     }
-
+    /**
+     * 每次打开右上角菜单前都会调用这个方法
+     * 作用：动态准备、更新菜单内容
+     */
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
+        // 清空之前的菜单，防止菜单重复/残留
         menu.clear();
+
+        // 根据当前界面状态，加载不同的菜单
         if (mState == ListEditState.NOTE_LIST) {
+            // 当前在【主页面（所有笔记）】
+            // 加载主页面菜单
             getMenuInflater().inflate(R.menu.note_list, menu);
-            // set sync or sync_cancel
+
+            // 动态设置同步按钮文字
+            // 如果正在同步 → 显示“取消同步”
+            // 如果未同步 → 显示“同步”
             menu.findItem(R.id.menu_sync).setTitle(
                     GTaskSyncService.isSyncing() ? R.string.menu_sync_cancel : R.string.menu_sync);
+
         } else if (mState == ListEditState.SUB_FOLDER) {
+            // 当前在【普通子文件夹】
+            // 加载子文件夹菜单
             getMenuInflater().inflate(R.menu.sub_folder, menu);
+
         } else if (mState == ListEditState.CALL_RECORD_FOLDER) {
+            // 当前在【通话记录文件夹】
+            // 加载通话记录菜单
             getMenuInflater().inflate(R.menu.call_record_folder, menu);
+
         } else {
+            // 异常状态，打印错误日志
             Log.e(TAG, "Wrong state:" + mState);
         }
 
-        if(mode==-1){
+        // 根据当前背景模式（mode），动态隐藏对应的背景切换菜单项
+        if(mode == -1){
+            // 模式-1：隐藏背景1选项
             menu.findItem(R.id.menu_background1).setVisible(false);
-        }
-        else if(mode==0){
+        } else if(mode == 0){
+            // 模式0：隐藏背景2选项
             menu.findItem(R.id.menu_background2).setVisible(false);
         }
+
+        // 返回true，表示菜单准备完成，可以显示
         return true;
     }
 
+    /**
+     * 右上角【选项菜单】的点击事件处理
+     * 作用：用户点击菜单里的任意按钮，都会走到这个方法
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // 获取当前点击的菜单按钮ID
         int itemId = item.getItemId();
+
+        // ============== 背景皮肤切换 ==============
+        // 点击 背景1 切换白色/默认背景
         if (itemId == R.id.menu_background1) {
-            mode=-1;
-            getWindow().setBackgroundDrawableResource(R.drawable.background1);
-        } else if (itemId == R.id.menu_background2) {
-            mode=0;
-            getWindow().setBackgroundDrawableResource(R.drawable.background2);
-        } else if (itemId == R.id.menu_new_folder) {
-            showCreateOrModifyFolderDialog(true);
-        } else if (itemId == R.id.menu_export_text) {
-            exportNoteToText();
-        } else if (itemId == R.id.menu_sync) {
-            if (isSyncMode()) {
+            mode = -1;  // 记录当前背景模式
+            getWindow().setBackgroundDrawableResource(R.drawable.background1); // 设置窗口背景
+        }
+        // 点击 背景2 切换深色背景
+        else if (itemId == R.id.menu_background2) {
+            mode = 0;   // 记录当前背景模式
+            getWindow().setBackgroundDrawableResource(R.drawable.background2); // 设置窗口背景
+        }
+
+        // ============== 文件夹操作 ==============
+        // 点击 新建文件夹
+        else if (itemId == R.id.menu_new_folder) {
+            showCreateOrModifyFolderDialog(true); // 弹出创建文件夹对话框
+        }
+
+        // ============== 导出笔记 ==============
+        // 点击 导出为文本
+        else if (itemId == R.id.menu_export_text) {
+            exportNoteToText(); // 执行导出逻辑
+        }
+
+        // ============== 同步功能 ==============
+        // 点击 同步/取消同步
+        else if (itemId == R.id.menu_sync) {
+            if (isSyncMode()) { // 如果开启了同步功能
+                // 当前文字是 "同步" → 开始同步
                 if (TextUtils.equals(item.getTitle(), getString(R.string.menu_sync))) {
                     GTaskSyncService.startSync(this);
                 } else {
+                    // 当前文字是 "取消同步" → 停止同步
                     GTaskSyncService.cancelSync(this);
                 }
             } else {
+                // 未开启同步 → 跳转到设置界面
                 startPreferenceActivity();
             }
-        } else if (itemId == R.id.menu_setting) {
-            startPreferenceActivity();
-        } else if (itemId == R.id.menu_new_note) {
-            createNewNote();
-        } else if (itemId == R.id.menu_search) {
-            onSearchRequested();
         }
+
+        // ============== 设置页面 ==============
+        // 点击 设置
+        else if (itemId == R.id.menu_setting) {
+            startPreferenceActivity(); // 跳转到设置界面
+        }
+
+        // ============== 新建笔记 ==============
+        // 点击 新建笔记
+        else if (itemId == R.id.menu_new_note) {
+            createNewNote(); // 创建新笔记
+        }
+
+        // ============== 搜索功能 ==============
+        // 点击 搜索
+        else if (itemId == R.id.menu_search) {
+            onSearchRequested(); // 打开搜索界面
+        }
+
+        // 返回 true 表示处理了点击事件
         return true;
     }
 
@@ -1188,62 +1282,93 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         }.execute();
     }
 
+    /**
+     * 判断是否开启了同步模式
+     * @return true = 已设置同步账号，开启同步；false = 未开启
+     */
     private boolean isSyncMode() {
+        // 检查同步账号是否不为空
         return NotesPreferenceActivity.getSyncAccountName(this).trim().length() > 0;
     }
 
+    /**
+     * 打开设置页面（同步、账号、偏好设置）
+     */
     private void startPreferenceActivity() {
+        // 获取当前要跳转的Activity（处理嵌套Activity情况）
         Activity from = getParent() != null ? getParent() : this;
         Intent intent = new Intent(from, NotesPreferenceActivity.class);
+        // 跳转设置页面，如果需要的话
         from.startActivityIfNeeded(intent, -1);
     }
 
+    /**
+     * 列表条目点击监听器
+     * 点击笔记/文件夹时触发
+     */
     private class OnListItemClickListener implements OnItemClickListener {
 
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            // 判断点击的是不是笔记列表项
             if (view instanceof NotesListItem) {
                 NoteItemData item = ((NotesListItem) view).getItemData();
+
+                // 如果是多选模式（批量删除/移动）
                 if (mNotesListAdapter.isInChoiceMode()) {
                     if (item.getType() == Notes.TYPE_NOTE) {
                         position = position - mNotesListView.getHeaderViewsCount();
+                        // 切换条目选中状态
                         mModeCallBack.onItemCheckedStateChanged(null, position, id,
                                 !mNotesListAdapter.isSelectedItem(position));
                     }
                     return;
                 }
 
+                // 根据当前界面状态处理点击
                 switch (mState) {
+                    // 在主页面（所有笔记）
                     case NOTE_LIST:
-                        if (item.getType() == Notes.TYPE_FOLDER
-                                || item.getType() == Notes.TYPE_SYSTEM) {
+                        if (item.getType() == Notes.TYPE_FOLDER || item.getType() == Notes.TYPE_SYSTEM) {
+                            // 点击文件夹 → 打开文件夹
                             openFolder(item);
                         } else if (item.getType() == Notes.TYPE_NOTE) {
+                            // 点击笔记 → 打开笔记
                             openNode(item);
                         } else {
                             Log.e(TAG, "Wrong note type in NOTE_LIST");
                         }
                         break;
+
+                    // 在子文件夹 / 通话记录文件夹
                     case SUB_FOLDER:
                     case CALL_RECORD_FOLDER:
                         if (item.getType() == Notes.TYPE_NOTE) {
+                            // 只允许点击打开笔记
                             openNode(item);
                         } else {
                             Log.e(TAG, "Wrong note type in SUB_FOLDER");
                         }
                         break;
+
                     default:
                         break;
                 }
             }
         }
-
     }
 
+    /**
+     * 查询可移动的目标文件夹（用于批量移动笔记）
+     */
     private void startQueryDestinationFolders() {
+        // 查询条件：类型=文件夹，且不是回收站，且不是当前文件夹
         String selection = NoteColumns.TYPE + "=? AND " + NoteColumns.PARENT_ID + "<>? AND " + NoteColumns.ID + "<>?";
-        selection = (mState == ListEditState.NOTE_LIST) ? selection:
-            "(" + selection + ") OR (" + NoteColumns.ID + "=" + Notes.ID_ROOT_FOLDER + ")";
 
+        // 如果是主页面，额外加入根文件夹
+        selection = (mState == ListEditState.NOTE_LIST) ? selection:
+                "(" + selection + ") OR (" + NoteColumns.ID + "=" + Notes.ID_ROOT_FOLDER + ")";
+
+        // 异步查询数据库
         mBackgroundQueryHandler.startQuery(FOLDER_LIST_QUERY_TOKEN,
                 null,
                 Notes.CONTENT_NOTE_URI,
@@ -1257,17 +1382,30 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                 NoteColumns.MODIFIED_DATE + " DESC");
     }
 
+    /**
+     * 列表长按事件
+     * 长按笔记 → 进入多选模式
+     * 长按文件夹 → 弹出上下文菜单（查看/删除/重命名）
+     */
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
         if (view instanceof NotesListItem) {
+            // 获取长按的条目数据
             mFocusNoteDataItem = ((NotesListItem) view).getItemData();
+
+            // 长按的是【笔记】，且不是多选模式
             if (mFocusNoteDataItem.getType() == Notes.TYPE_NOTE && !mNotesListAdapter.isInChoiceMode()) {
+                // 进入批量操作模式
                 if (mNotesListView.startActionMode(mModeCallBack) != null) {
                     mModeCallBack.onItemCheckedStateChanged(null, position, id, true);
+                    // 震动反馈
                     mNotesListView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                 } else {
                     Log.e(TAG, "startActionMode fails");
                 }
-            } else if (mFocusNoteDataItem.getType() == Notes.TYPE_FOLDER) {
+            }
+            // 长按的是【文件夹】
+            else if (mFocusNoteDataItem.getType() == Notes.TYPE_FOLDER) {
+                // 绑定文件夹长按菜单
                 mNotesListView.setOnCreateContextMenuListener(mFolderOnCreateContextMenuListener);
             }
         }
