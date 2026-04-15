@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,12 +37,20 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-
+/**
+ * 核心便签数据映射类（聚合根）。
+ * 负责封装便签主表（Note）及关联的数据附表（Data）的 CRUD 操作及云端 JSON 序列化/反序列化。
+ * 内部集成了脏检查（Dirty Checking）机制，仅将发生实质变更的字段提交至底层数据库。
+ */
 public class SqlNote {
     private static final String TAG = SqlNote.class.getSimpleName();
 
+    /** 无效 ID 标识常量 */
     private static final int INVALID_ID = -99999;
 
+    /** * 查询投影数组。
+     * 定义了从数据库 Note 表中提取数据的标准列集合。顺序需与下标常量严格对齐。
+     */
     public static final String[] PROJECTION_NOTE = new String[] {
             NoteColumns.ID, NoteColumns.ALERTED_DATE, NoteColumns.BG_COLOR_ID,
             NoteColumns.CREATED_DATE, NoteColumns.HAS_ATTACHMENT, NoteColumns.MODIFIED_DATE,
@@ -52,76 +60,56 @@ public class SqlNote {
             NoteColumns.VERSION
     };
 
+    // --- 列索引映射常量 ---
     public static final int ID_COLUMN = 0;
-
     public static final int ALERTED_DATE_COLUMN = 1;
-
     public static final int BG_COLOR_ID_COLUMN = 2;
-
     public static final int CREATED_DATE_COLUMN = 3;
-
     public static final int HAS_ATTACHMENT_COLUMN = 4;
-
     public static final int MODIFIED_DATE_COLUMN = 5;
-
     public static final int NOTES_COUNT_COLUMN = 6;
-
     public static final int PARENT_ID_COLUMN = 7;
-
     public static final int SNIPPET_COLUMN = 8;
-
     public static final int TYPE_COLUMN = 9;
-
     public static final int WIDGET_ID_COLUMN = 10;
-
     public static final int WIDGET_TYPE_COLUMN = 11;
-
     public static final int SYNC_ID_COLUMN = 12;
-
     public static final int LOCAL_MODIFIED_COLUMN = 13;
-
     public static final int ORIGIN_PARENT_ID_COLUMN = 14;
-
     public static final int GTASK_ID_COLUMN = 15;
-
     public static final int VERSION_COLUMN = 16;
 
     private Context mContext;
-
     private ContentResolver mContentResolver;
 
+    /** 生命周期标识：是否为尚未写入数据库的新建记录 */
     private boolean mIsCreate;
 
+    // --- 便签实体属性 ---
     private long mId;
-
     private long mAlertDate;
-
     private int mBgColorId;
-
     private long mCreatedDate;
-
     private int mHasAttachment;
-
     private long mModifiedDate;
-
     private long mParentId;
-
     private String mSnippet;
-
     private int mType;
-
     private int mWidgetId;
-
     private int mWidgetType;
-
     private long mOriginParent;
-
     private long mVersion;
 
+    /** 脏字段集合，用于承载待更新的差量数据 */
     private ContentValues mDiffNoteValues;
 
+    /** 当前便签挂载的所有详情数据项列表 */
     private ArrayList<SqlData> mDataList;
 
+    /**
+     * 构造函数（新建模式）。
+     * 初始化一个全新的便签内存对象，并赋予默认系统属性。
+     */
     public SqlNote(Context context) {
         mContext = context;
         mContentResolver = context.getContentResolver();
@@ -143,6 +131,10 @@ public class SqlNote {
         mDataList = new ArrayList<SqlData>();
     }
 
+    /**
+     * 构造函数（游标加载模式）。
+     * 从现有的数据库游标中反序列化便签主表记录，并级联加载所属的详情数据。
+     */
     public SqlNote(Context context, Cursor c) {
         mContext = context;
         mContentResolver = context.getContentResolver();
@@ -154,6 +146,10 @@ public class SqlNote {
         mDiffNoteValues = new ContentValues();
     }
 
+    /**
+     * 构造函数（ID 加载模式）。
+     * 根据主键 ID 直接查询数据库还原便签对象。
+     */
     public SqlNote(Context context, long id) {
         mContext = context;
         mContentResolver = context.getContentResolver();
@@ -163,15 +159,17 @@ public class SqlNote {
         if (mType == Notes.TYPE_NOTE)
             loadDataContent();
         mDiffNoteValues = new ContentValues();
-
     }
 
+    /**
+     * 根据 ID 从底层 Provider 查询并填充主表数据。
+     */
     private void loadFromCursor(long id) {
         Cursor c = null;
         try {
             c = mContentResolver.query(Notes.CONTENT_NOTE_URI, PROJECTION_NOTE, "(_id=?)",
                     new String[] {
-                        String.valueOf(id)
+                            String.valueOf(id)
                     }, null);
             if (c != null) {
                 c.moveToNext();
@@ -185,6 +183,9 @@ public class SqlNote {
         }
     }
 
+    /**
+     * 从已定位的游标中提取各列数据赋值给成员变量。
+     */
     private void loadFromCursor(Cursor c) {
         mId = c.getLong(ID_COLUMN);
         mAlertDate = c.getLong(ALERTED_DATE_COLUMN);
@@ -200,13 +201,16 @@ public class SqlNote {
         mVersion = c.getLong(VERSION_COLUMN);
     }
 
+    /**
+     * 级联加载与当前便签关联的所有 Data 表明细记录。
+     */
     private void loadDataContent() {
         Cursor c = null;
         mDataList.clear();
         try {
             c = mContentResolver.query(Notes.CONTENT_DATA_URI, SqlData.PROJECTION_DATA,
                     "(note_id=?)", new String[] {
-                        String.valueOf(mId)
+                            String.valueOf(mId)
                     }, null);
             if (c != null) {
                 if (c.getCount() == 0) {
@@ -226,13 +230,19 @@ public class SqlNote {
         }
     }
 
+    /**
+     * 根据云端下发的 JSON 结构对本地实体进行赋值，并记录修改的差量。
+     *
+     * @param js 云端传回的包含便签元数据及子数据的 JSON 对象
+     * @return 转换是否成功
+     */
     public boolean setContent(JSONObject js) {
         try {
             JSONObject note = js.getJSONObject(GTaskStringUtils.META_HEAD_NOTE);
             if (note.getInt(NoteColumns.TYPE) == Notes.TYPE_SYSTEM) {
                 Log.w(TAG, "cannot set system folder");
             } else if (note.getInt(NoteColumns.TYPE) == Notes.TYPE_FOLDER) {
-                // for folder we can only update the snnipet and type
+                // 对于文件夹类型，限制仅能更新摘要和类型标识
                 String snippet = note.has(NoteColumns.SNIPPET) ? note
                         .getString(NoteColumns.SNIPPET) : "";
                 if (mIsCreate || !mSnippet.equals(snippet)) {
@@ -331,6 +341,7 @@ public class SqlNote {
                 }
                 mOriginParent = originParent;
 
+                // 级联处理 Data 数据项集合
                 for (int i = 0; i < dataArray.length(); i++) {
                     JSONObject data = dataArray.getJSONObject(i);
                     SqlData sqlData = null;
@@ -359,6 +370,11 @@ public class SqlNote {
         return true;
     }
 
+    /**
+     * 将当前的实体状态及其包含的所有数据项深度序列化为 JSON。
+     *
+     * @return 序列化生成的 JSON 对象，如果状态异常（例如实体未入库）则返回 null。
+     */
     public JSONObject getContent() {
         try {
             JSONObject js = new JSONObject();
@@ -440,6 +456,12 @@ public class SqlNote {
         return mType == Notes.TYPE_NOTE;
     }
 
+    /**
+     * 将本记录的任何状态变化通过 ContentResolver 固化到底层数据库。
+     * 支持包含所属 Data 实体级的全量或差量事务。
+     *
+     * @param validateVersion 触发并发更新保护机制（乐观锁）。为 true 时通过版本号约束确保防冲突更新。
+     */
     public void commit(boolean validateVersion) {
         if (mIsCreate) {
             if (mId == INVALID_ID && mDiffNoteValues.containsKey(NoteColumns.ID)) {
@@ -473,11 +495,11 @@ public class SqlNote {
                 if (!validateVersion) {
                     result = mContentResolver.update(Notes.CONTENT_NOTE_URI, mDiffNoteValues, "("
                             + NoteColumns.ID + "=?)", new String[] {
-                        String.valueOf(mId)
+                            String.valueOf(mId)
                     });
                 } else {
                     result = mContentResolver.update(Notes.CONTENT_NOTE_URI, mDiffNoteValues, "("
-                            + NoteColumns.ID + "=?) AND (" + NoteColumns.VERSION + "<=?)",
+                                    + NoteColumns.ID + "=?) AND (" + NoteColumns.VERSION + "<=?)",
                             new String[] {
                                     String.valueOf(mId), String.valueOf(mVersion)
                             });
@@ -494,7 +516,7 @@ public class SqlNote {
             }
         }
 
-        // refresh local info
+        // 提交后重置当前实例状态
         loadFromCursor(mId);
         if (mType == Notes.TYPE_NOTE)
             loadDataContent();
