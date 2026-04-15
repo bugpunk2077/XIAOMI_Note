@@ -227,6 +227,7 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
      * 初始化页面资源、控件、适配器、事件监听
      * 主页面（笔记列表页）的控件初始化核心方法
      */
+
     private void initResources() {
         mContentResolver = this.getContentResolver();
         mBackgroundQueryHandler = new BackgroundQueryHandler(this.getContentResolver());
@@ -249,15 +250,30 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         mModeCallBack = new ModeCallback();
     }
 
+    /**
+     * 多选操作模式回调类
+     * 实现：笔记列表的长按多选功能（删除、移动、全选等）
+     */
     private class ModeCallback implements ListView.MultiChoiceModeListener, OnMenuItemClickListener {
+        // 下拉菜单（全选/取消全选）
         private DropdownMenu mDropDownMenu;
+        // 多选操作栏模式
         private ActionMode mActionMode;
+        // 移动菜单按钮
         private MenuItem mMoveMenu;
 
+        /**
+         * 创建多选操作模式（长按条目进入多选时触发）
+         */
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // 加载多选菜单布局
             getMenuInflater().inflate(R.menu.note_list_options, menu);
+            // 给删除按钮设置点击监听
             menu.findItem(R.id.delete).setOnMenuItemClickListener(this);
+            // 获取移动菜单项
             mMoveMenu = menu.findItem(R.id.move);
+
+            // 判断：如果是通话记录文件夹 或 没有自定义文件夹，则隐藏【移动】按钮
             if (mFocusNoteDataItem.getParentId() == Notes.ID_CALL_RECORD_FOLDER
                     || DataUtils.getUserFolderCount(mContentResolver) == 0) {
                 mMoveMenu.setVisible(false);
@@ -265,72 +281,112 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                 mMoveMenu.setVisible(true);
                 mMoveMenu.setOnMenuItemClickListener(this);
             }
+
             mActionMode = mode;
+            // 开启列表的多选模式
             mNotesListAdapter.setChoiceMode(true);
+            // 禁用列表长按（避免重复触发）
             mNotesListView.setLongClickable(false);
+            // 隐藏新建笔记按钮
             mAddNewNote.setVisibility(View.GONE);
 
+            // 加载自定义多选标题栏（带下拉菜单）
             View customView = LayoutInflater.from(NotesListActivity.this).inflate(
                     R.layout.note_list_dropdown_menu, null);
             mode.setCustomView(customView);
+
+            // 初始化下拉菜单（全选/取消全选）
             mDropDownMenu = new DropdownMenu(NotesListActivity.this,
                     (Button) customView.findViewById(R.id.selection_menu),
                     R.menu.note_list_dropdown);
+            // 下拉菜单点击事件
             mDropDownMenu.setOnDropdownMenuItemClickListener(new PopupMenu.OnMenuItemClickListener(){
                 public boolean onMenuItemClick(MenuItem item) {
+                    // 切换 全选/取消全选
                     mNotesListAdapter.selectAll(!mNotesListAdapter.isAllSelected());
+                    // 更新菜单显示
                     updateMenu();
                     return true;
                 }
-
             });
             return true;
         }
 
+        /**
+         * 更新顶部菜单标题与全选状态
+         * 例如：已选择 2 项、取消全选/全选
+         */
         private void updateMenu() {
+            // 获取选中的笔记数量
             int selectedCount = mNotesListAdapter.getSelectedCount();
-            // Update dropdown menu
+            // 设置标题：已选择 x 项
             String format = getResources().getString(R.string.menu_select_title, selectedCount);
             mDropDownMenu.setTitle(format);
+
             MenuItem item = mDropDownMenu.findItem(R.id.action_select_all);
             if (item != null) {
+                // 如果已经全部选中 → 显示“取消全选”
                 if (mNotesListAdapter.isAllSelected()) {
                     item.setChecked(true);
                     item.setTitle(R.string.menu_deselect_all);
                 } else {
+                    // 未全部选中 → 显示“全选”
                     item.setChecked(false);
                     item.setTitle(R.string.menu_select_all);
                 }
             }
         }
 
+        /**
+         * 刷新操作模式（系统空实现）
+         */
         public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            // TODO Auto-generated method stub
             return false;
         }
 
+        /**
+         * 操作栏按钮点击（系统空实现）
+         */
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            // TODO Auto-generated method stub
             return false;
         }
 
+        /**
+         * 退出多选模式时调用
+         * 恢复列表正常状态
+         */
         public void onDestroyActionMode(ActionMode mode) {
+            // 关闭多选模式
             mNotesListAdapter.setChoiceMode(false);
+            // 恢复列表长按可用
             mNotesListView.setLongClickable(true);
+            // 显示新建笔记按钮
             mAddNewNote.setVisibility(View.VISIBLE);
         }
 
+        /**
+         * 手动结束多选模式
+         */
         public void finishActionMode() {
             mActionMode.finish();
         }
 
-        public void onItemCheckedStateChanged(ActionMode mode, int position, long id,
-                boolean checked) {
+        /**
+         * 列表条目选中状态改变时触发
+         * 点击/取消点击条目时调用
+         */
+        public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
             mNotesListAdapter.setCheckedItem(position, checked);
+            // 更新菜单标题和状态
             updateMenu();
         }
 
+        /**
+         * 菜单按钮点击事件
+         * 处理：删除、移动 等操作
+         */
         public boolean onMenuItemClick(MenuItem item) {
+            // 未选中任何笔记 → 提示“请选择笔记”
             if (mNotesListAdapter.getSelectedCount() == 0) {
                 Toast.makeText(NotesListActivity.this, getString(R.string.menu_select_none),
                         Toast.LENGTH_SHORT).show();
@@ -338,22 +394,27 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             }
 
             int itemId = item.getItemId();
+            // 点击删除按钮
             if (itemId == R.id.delete) {
+                // 弹出删除确认对话框
                 AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
                 builder.setTitle(getString(R.string.alert_title_delete));
                 builder.setIcon(android.R.drawable.ic_dialog_alert);
                 builder.setMessage(getString(R.string.alert_message_delete_notes,
                         mNotesListAdapter.getSelectedCount()));
+                // 确认删除
                 builder.setPositiveButton(android.R.string.ok,
                         new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog,
-                                                int which) {
+                            public void onClick(DialogInterface dialog, int which) {
+                                // 执行批量删除
                                 batchDelete();
                             }
                         });
+                // 取消
                 builder.setNegativeButton(android.R.string.cancel, null);
                 builder.show();
             } else if (itemId == R.id.move) {
+                // 点击移动按钮 → 打开文件夹选择界面
                 startQueryDestinationFolders();
             } else {
                 return false;
@@ -362,47 +423,72 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         }
     }
 
+    /**
+     * 新建笔记按钮的触摸监听
+     * 核心作用：实现按钮透明区域穿透触摸，让底下的列表可以正常滑动/点击
+     */
     private class NewNoteOnTouchListener implements OnTouchListener {
 
         public boolean onTouch(View v, MotionEvent event) {
+            // 判断触摸动作：按下 / 移动 / 抬起
             switch (event.getAction()) {
+                // 1. 手指按下按钮
                 case MotionEvent.ACTION_DOWN: {
+                    // 获取屏幕高度
                     Display display = getWindowManager().getDefaultDisplay();
                     int screenHeight = display.getHeight();
+
+                    // 获取【新建笔记】按钮自身高度
                     int newNoteViewHeight = mAddNewNote.getHeight();
+
+                    // 计算按钮在屏幕上的起始Y坐标
                     int start = screenHeight - newNoteViewHeight;
+
+                    // 计算触摸点在屏幕上的真实Y坐标
                     int eventY = start + (int) event.getY();
-                    /**
-                     * Minus TitleBar's height
-                     */
+
+                    // 如果是子文件夹状态，减去标题栏高度
                     if (mState == ListEditState.SUB_FOLDER) {
                         eventY -= mTitleBar.getHeight();
                         start -= mTitleBar.getHeight();
                     }
+
                     /**
-                     * HACKME:When click the transparent part of "New Note" button, dispatch
-                     * the event to the list view behind this button. The transparent part of
-                     * "New Note" button could be expressed by formula y=-0.12x+94（Unit:pixel）
-                     * and the line top of the button. The coordinate based on left of the "New
-                     * Note" button. The 94 represents maximum height of the transparent part.
-                     * Notice that, if the background of the button changes, the formula should
-                     * also change. This is very bad, just for the UI designer's strong requirement.
+                     * 👇👇👇 核心逻辑 👇👇👇
+                     * 这是一个UI适配的特殊处理：
+                     * 按钮有一部分是【透明图片区域】，用户点这里时，
+                     * 要把触摸事件【穿透】给底下的笔记列表，让列表能正常滑动
+                     *
+                     * 公式：y = -0.12x + 94
+                     * 意思是：按钮左上角区域是透明的，需要事件穿透
                      */
                     if (event.getY() < (event.getX() * (-0.12) + 94)) {
+                        // 获取列表最底部的可见条目
                         View view = mNotesListView.getChildAt(mNotesListView.getChildCount() - 1
                                 - mNotesListView.getFooterViewsCount());
+
+                        // 判断：底部条目正好在按钮下方
                         if (view != null && view.getBottom() > start
                                 && (view.getTop() < (start + 94))) {
+
+                            // 记录坐标，准备事件穿透
                             mOriginY = (int) event.getY();
                             mDispatchY = eventY;
                             event.setLocation(event.getX(), mDispatchY);
+
+                            // 标记：开启事件分发（穿透）
                             mDispatch = true;
+
+                            // 把触摸事件交给底下的列表处理（滑动/点击）
                             return mNotesListView.dispatchTouchEvent(event);
                         }
                     }
                     break;
                 }
+
+                // 2. 手指在按钮上滑动
                 case MotionEvent.ACTION_MOVE: {
+                    // 如果开启了穿透，滑动事件也传给列表（实现列表滑动）
                     if (mDispatch) {
                         mDispatchY += (int) event.getY() - mOriginY;
                         event.setLocation(event.getX(), mDispatchY);
@@ -410,7 +496,10 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                     }
                     break;
                 }
+
+                // 3. 手指抬起 / 其他事件
                 default: {
+                    // 结束穿透，恢复正常
                     if (mDispatch) {
                         event.setLocation(event.getX(), mDispatchY);
                         mDispatch = false;
@@ -419,44 +508,83 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                     break;
                 }
             }
+            // 默认不拦截事件，正常响应按钮点击
             return false;
         }
-
     };
 
+    /**
+     * 异步查询笔记列表数据（后台查询，不卡界面）
+     * 根据当前选中的文件夹，加载对应的笔记数据
+     */
     private void startAsyncNotesListQuery() {
+        // 判断当前文件夹：
+        // 如果是【根文件夹（所有笔记）】，使用根目录查询条件
+        // 如果是【普通文件夹】，使用普通查询条件
         String selection = (mCurrentFolderId == Notes.ID_ROOT_FOLDER) ? ROOT_FOLDER_SELECTION
                 : NORMAL_SELECTION;
-        mBackgroundQueryHandler.startQuery(FOLDER_NOTE_LIST_QUERY_TOKEN, null,
-                Notes.CONTENT_NOTE_URI, NoteItemData.PROJECTION, selection, new String[] {
-                    String.valueOf(mCurrentFolderId)
-                }, NoteColumns.TYPE + " DESC," + NoteColumns.MODIFIED_DATE + " DESC");
+
+        // 后台异步查询数据库（不会阻塞UI线程）
+        // 参数说明：
+        // FOLDER_NOTE_LIST_QUERY_TOKEN = 查询标识
+        // Notes.CONTENT_NOTE_URI       = 笔记数据访问地址
+        // NoteItemData.PROJECTION      = 要查询的字段
+        // selection                    = 查询条件（根据文件夹筛选）
+        // new String[] { ... }         = 文件夹ID（查询哪个文件夹的笔记）
+        // 最后参数                     = 排序规则：按笔记类型 + 修改时间 降序（最新的排在最上面）
+        mBackgroundQueryHandler.startQuery(
+                FOLDER_NOTE_LIST_QUERY_TOKEN,
+                null,
+                Notes.CONTENT_NOTE_URI,
+                NoteItemData.PROJECTION,
+                selection,
+                new String[] { String.valueOf(mCurrentFolderId) },
+                NoteColumns.TYPE + " DESC," + NoteColumns.MODIFIED_DATE + " DESC"
+        );
     }
 
+    /**
+     * 后台异步查询处理器
+     * 专门在子线程查询数据库，查询完成后自动切回主线程更新界面
+     */
     private final class BackgroundQueryHandler extends AsyncQueryHandler {
+
+        // 构造方法：传入内容解析器，用于访问数据
         public BackgroundQueryHandler(ContentResolver contentResolver) {
             super(contentResolver);
         }
 
+        /**
+         * 查询完成回调（系统自动调用）
+         * @param token 查询标识符（区分是哪个查询任务）
+         * @param cookie 备用参数
+         * @param cursor 查询返回的结果数据（笔记/文件夹列表）
+         */
         @Override
         protected void onQueryComplete(int token, Object cookie, Cursor cursor) {
+            // 根据 token 判断是哪次查询
             switch (token) {
+                // 1. 笔记列表查询完成
                 case FOLDER_NOTE_LIST_QUERY_TOKEN:
+                    // 将查询到的笔记数据设置给适配器，显示到列表上
                     mNotesListAdapter.changeCursor(cursor);
                     break;
+
+                // 2. 文件夹列表查询完成
                 case FOLDER_LIST_QUERY_TOKEN:
                     if (cursor != null && cursor.getCount() > 0) {
+                        // 显示文件夹选择菜单
                         showFolderListMenu(cursor);
                     } else {
                         Log.e(TAG, "Query folder failed");
                     }
                     break;
+
                 default:
                     return;
             }
         }
     }
-
     private void showFolderListMenu(Cursor cursor) {
         AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
         builder.setTitle(R.string.menu_title_select_folder);
