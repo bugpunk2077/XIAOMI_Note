@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 应用清单文件：声明应用组件、权限、兼容配置等核心信息 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 外部存储写入权限（文件保存/修改） -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- 创建桌面快捷方式权限 -->
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+    <!-- 网络访问权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 读取手机联系人权限 -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- 管理账户权限 -->
     <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />
+    <!-- 身份验证权限 -->
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+    <!-- 获取账户列表权限 -->
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <!-- 使用账户凭证权限 -->
     <uses-permission android:name="android.permission.USE_CREDENTIALS" />
+    <!-- 开机启动完成广播接收权限 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- 应用全局配置节点 -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +34,7 @@
         android:theme="@style/Theme.Notes"
         tools:targetApi="31">
 
+        <!-- 主页面：笔记列表页面，应用入口 -->
         <activity
             android:name=".ui.NotesListActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
@@ -33,12 +45,14 @@
             android:windowSoftInputMode="adjustPan"
             android:exported="true">
 
+            <!-- 应用启动入口过滤器 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- 笔记编辑页面：新建/编辑/查看笔记 -->
         <activity
             android:name=".ui.NoteEditActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
@@ -46,6 +60,7 @@
             android:theme="@style/NoteTheme"
             android:exported="true">
 
+            <!-- 查看笔记过滤器 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -53,6 +68,7 @@
                 <data android:mimeType="vnd.android.cursor.item/call_note" />
             </intent-filter>
 
+            <!-- 插入或编辑笔记过滤器 -->
             <intent-filter>
                 <action android:name="android.intent.action.INSERT_OR_EDIT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -60,22 +76,26 @@
                 <data android:mimeType="vnd.android.cursor.item/call_note" />
             </intent-filter>
 
+            <!-- 搜索功能过滤器 -->
             <intent-filter>
                 <action android:name="android.intent.action.SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
+            <!-- 搜索配置元数据 -->
             <meta-data
                 android:name="android.app.searchable"
                 android:resource="@xml/searchable" />
         </activity>
 
 
+        <!-- 笔记内容数据提供者：提供笔记数据的存储与访问 -->
         <provider
             android:name="net.micode.notes.data.NotesProvider"
             android:authorities="micode_notes"
             android:multiprocess="true" />
 
+        <!-- 2x2 桌面小部件提供者 -->
         <receiver
             android:name=".widget.NoteWidgetProvider_2x"
             android:label="@string/app_widget2x2"
@@ -86,10 +106,13 @@
                 <action android:name="android.intent.action.PRIVACY_MODE_CHANGED" />
             </intent-filter>
 
+            <!-- 小部件配置信息 -->
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_2x_info" />
         </receiver>
+
+        <!-- 4x4 桌面小部件提供者 -->
         <receiver
             android:name=".widget.NoteWidgetProvider_4x"
             android:label="@string/app_widget4x4"
@@ -101,11 +124,13 @@
                 <action android:name="android.intent.action.PRIVACY_MODE_CHANGED" />
             </intent-filter>
 
+            <!-- 小部件配置信息 -->
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_4x_info" />
         </receiver>
 
+        <!-- 开机初始化广播接收器：开机后初始化闹钟服务 -->
         <receiver android:name=".ui.AlarmInitReceiver"
             android:exported="true">
             <intent-filter>
@@ -113,11 +138,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- 闹钟提醒广播接收器 -->
         <receiver
             android:name="net.micode.notes.ui.AlarmReceiver"
             android:process=":remote" >
         </receiver>
 
+        <!-- 闹钟提醒弹窗页面 -->
         <activity
             android:name=".ui.AlarmAlertActivity"
             android:label="@string/app_name"
@@ -125,6 +152,7 @@
             android:theme="@android:style/Theme.Holo.Wallpaper.NoTitleBar" >
         </activity>
 
+        <!-- 设置页面 -->
         <activity
             android:name="net.micode.notes.ui.NotesPreferenceActivity"
             android:label="@string/preferences_title"
@@ -132,15 +160,18 @@
             android:theme="@android:style/Theme.Holo.Light" >
         </activity>
 
+        <!-- GTask 同步服务：后台同步笔记数据 -->
         <service
             android:name="net.micode.notes.gtask.remote.GTaskSyncService"
             android:exported="false" >
         </service>
 
+        <!-- 默认搜索配置 -->
         <meta-data
             android:name="android.app.default_searchable"
             android:value=".ui.NoteEditActivity" />
 
+        <!-- 已注释的默认主界面，未启用 -->
         <!--        <activity-->
         <!--            android:name=".MainActivity"-->
         <!--            android:exported="true">-->

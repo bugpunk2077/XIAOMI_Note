@@ -136,7 +136,7 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
 
     private final static int REQUEST_CODE_OPEN_NODE = 102;
     private final static int REQUEST_CODE_NEW_NODE  = 103;
-
+    //页面初始化，背景，字体等各种资源
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -155,7 +155,10 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
          */
         setAppInfoFromRawRes();
     }
-
+    /**
+     * 页面返回结果回调
+     * 当从编辑笔记页面返回时，刷新笔记列表
+     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == RESULT_OK
@@ -165,7 +168,10 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             super.onActivityResult(requestCode, resultCode, data);
         }
     }
-
+    /**
+     * 首次打开APP时，自动创建一条【新手引导/使用说明】笔记
+     * 只在第一次启动时创建一次，之后不再创建
+     */
     private void setAppInfoFromRawRes() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         if (!sp.getBoolean(PREFERENCE_ADD_INTRODUCTION, false)) {
@@ -198,7 +204,7 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                     }
                 }
             }
-
+// 创建一条空笔记，作为【新手使用说明】，并保存
             WorkingNote note = WorkingNote.createEmptyNote(this, Notes.ID_ROOT_FOLDER,
                     AppWidgetManager.INVALID_APPWIDGET_ID, Notes.TYPE_WIDGET_INVALIDE,
                     ResourceParser.RED);
@@ -217,7 +223,10 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         super.onStart();
         startAsyncNotesListQuery();
     }
-
+    /**
+     * 初始化页面资源、控件、适配器、事件监听
+     * 主页面（笔记列表页）的控件初始化核心方法
+     */
     private void initResources() {
         mContentResolver = this.getContentResolver();
         mBackgroundQueryHandler = new BackgroundQueryHandler(this.getContentResolver());
