@@ -585,34 +585,68 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             }
         }
     }
+    /**
+     * 显示【选择目标文件夹】对话框
+     * 用于批量移动笔记时，让用户选择要移动到哪个文件夹
+     * @param cursor 从数据库查询到的所有文件夹数据
+     */
     private void showFolderListMenu(Cursor cursor) {
+        // 创建弹窗对话框
         AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
+
+        // 设置弹窗标题：选择文件夹
         builder.setTitle(R.string.menu_title_select_folder);
+
+        // 创建文件夹列表适配器，把数据库中的文件夹数据加载进去
         final FoldersListAdapter adapter = new FoldersListAdapter(this, cursor);
+
+        // 给弹窗设置列表，并设置条目点击事件
         builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
 
+            // 用户点击了某个文件夹
             public void onClick(DialogInterface dialog, int which) {
+                // 执行批量移动操作：把选中的笔记移动到目标文件夹
                 DataUtils.batchMoveToFolder(mContentResolver,
                         mNotesListAdapter.getSelectedItemIds(), adapter.getItemId(which));
+
+                // 弹出提示：成功移动 x 条笔记到 xxx 文件夹
                 Toast.makeText(
                         NotesListActivity.this,
                         getString(R.string.format_move_notes_to_folder,
                                 mNotesListAdapter.getSelectedCount(),
                                 adapter.getFolderName(NotesListActivity.this, which)),
                         Toast.LENGTH_SHORT).show();
+
+                // 移动完成后，关闭多选模式，刷新列表
                 mModeCallBack.finishActionMode();
             }
         });
+
+        // 显示文件夹选择弹窗
         builder.show();
     }
 
+    /**
+     * 创建一条新笔记
+     * 点击右下角【新建笔记】按钮时执行
+     */
     private void createNewNote() {
+        // 构建跳转意图：从当前页面跳转到 笔记编辑页面
         Intent intent = new Intent(this, NoteEditActivity.class);
+
+        // 设置动作：插入或编辑笔记
         intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
+
+        // 携带当前文件夹ID → 告诉编辑页面：新笔记要保存在哪个文件夹里
         intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, mCurrentFolderId);
+
+        // 跳转到编辑页面，并等待返回结果（用于返回后刷新列表）
         this.startActivityForResult(intent, REQUEST_CODE_NEW_NODE);
     }
-
+    /**
+     * 批量删除选中的笔记
+     * 分为两种模式：普通模式（直接删除）、同步模式（移入回收站）
+     */
     private void batchDelete() {
         new AsyncTask<Void, Void, HashSet<AppWidgetAttribute>>() {
             protected HashSet<AppWidgetAttribute> doInBackground(Void... unused) {
@@ -650,209 +684,357 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         }.execute();
     }
 
+    /**
+     * 删除文件夹
+     * 根据是否是同步模式，直接删除 或 移入回收站
+     * @param folderId 要删除的文件夹ID
+     */
     private void deleteFolder(long folderId) {
+        // 禁止删除根文件夹（所有笔记），这是系统默认文件夹，不能删
         if (folderId == Notes.ID_ROOT_FOLDER) {
             Log.e(TAG, "Wrong folder id, should not happen " + folderId);
             return;
         }
 
+        // 把要删除的文件夹ID装进集合
         HashSet<Long> ids = new HashSet<Long>();
         ids.add(folderId);
-        HashSet<AppWidgetAttribute> widgets = DataUtils.getFolderNoteWidget(mContentResolver,
-                folderId);
+
+        // 获取该文件夹下笔记关联的桌面小部件（用于删除后更新小部件）
+        HashSet<AppWidgetAttribute> widgets = DataUtils.getFolderNoteWidget(mContentResolver, folderId);
+
+        // 判断是否为同步模式
         if (!isSyncMode()) {
-            // if not synced, delete folder directly
+            // 非同步模式：直接永久删除这个文件夹（包含里面所有笔记）
             DataUtils.batchDeleteNotes(mContentResolver, ids);
         } else {
-            // in sync mode, we'll move the deleted folder into the trash folder
+            // 同步模式：不直接删除，将文件夹 移入【回收站】
             DataUtils.batchMoveToFolder(mContentResolver, ids, Notes.ID_TRASH_FOLER);
         }
+
+        // 删除/移动后，更新所有关联的桌面小部件
         if (widgets != null) {
             for (AppWidgetAttribute widget : widgets) {
                 if (widget.widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                         && widget.widgetType != Notes.TYPE_WIDGET_INVALIDE) {
+                    // 刷新桌面小部件显示
                     updateWidget(widget.widgetId, widget.widgetType);
                 }
             }
         }
     }
-
+    /**
+     * 打开一条已有的笔记（查看/编辑）
+     * @param data 被点击的笔记数据
+     */
     private void openNode(NoteItemData data) {
+        // 跳转到笔记编辑页面
         Intent intent = new Intent(this, NoteEditActivity.class);
+        // 设置动作为：查看笔记
         intent.setAction(Intent.ACTION_VIEW);
+        // 把当前笔记的 ID 传递给编辑页面（告诉页面要打开哪条笔记）
         intent.putExtra(Intent.EXTRA_UID, data.getId());
+        // 跳转并等待返回结果（返回后刷新列表）
         this.startActivityForResult(intent, REQUEST_CODE_OPEN_NODE);
     }
 
+    /**
+     * 打开一个文件夹（进入文件夹查看里面的笔记）
+     * @param data 被点击的文件夹数据
+     */
     private void openFolder(NoteItemData data) {
+        // 记录当前打开的文件夹 ID
         mCurrentFolderId = data.getId();
+        // 异步查询该文件夹下的所有笔记，并显示到列表
         startAsyncNotesListQuery();
+
+        // 判断：如果是【通话记录文件夹】
         if (data.getId() == Notes.ID_CALL_RECORD_FOLDER) {
+            // 设置界面状态为通话记录文件夹
             mState = ListEditState.CALL_RECORD_FOLDER;
+            // 隐藏“新建笔记”按钮（通话记录不能新建）
             mAddNewNote.setVisibility(View.GONE);
         } else {
+            // 普通文件夹
             mState = ListEditState.SUB_FOLDER;
         }
+
+        // 设置标题栏文字
         if (data.getId() == Notes.ID_CALL_RECORD_FOLDER) {
+            // 固定显示：通话记录
             mTitleBar.setText(R.string.call_record_folder_name);
         } else {
+            // 显示文件夹名称
             mTitleBar.setText(data.getSnippet());
         }
+
+        // 显示标题栏
         mTitleBar.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * 点击事件监听
+     * 目前只处理：右下角【新建笔记】按钮
+     */
     public void onClick(View v) {
+        // 判断点击的是不是新建笔记按钮
         if (v.getId() == R.id.btn_new_note) {
+            // 执行新建笔记逻辑
             createNewNote();
         }
     }
 
+    /**
+     * 强制弹出软键盘（输入法键盘）
+     * 一般在进入编辑页面、需要立即输入文字时调用
+     */
     private void showSoftInput() {
+        // 获取系统输入法管理器（负责控制键盘显示/隐藏）
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+
+        // 如果获取成功，强制显示软键盘
         if (inputMethodManager != null) {
+            // SHOW_FORCED = 强制显示键盘
             inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
         }
     }
 
+    /**
+     * 隐藏软键盘
+     * @param view 当前获取焦点的View（用于获取窗口令牌）
+     */
     private void hideSoftInput(View view) {
+        // 获取系统输入法管理器
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+
+        // 隐藏软键盘，根据传入View的窗口令牌关闭
         inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
+    /**
+     * 显示【创建文件夹】或【重命名文件夹】的对话框
+     * @param create true = 创建文件夹；false = 重命名文件夹
+     */
     private void showCreateOrModifyFolderDialog(final boolean create) {
+        // 创建对话框构建器
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        // 加载对话框布局（包含一个输入框）
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
+        // 获取对话框中的输入框（用于输入/修改文件夹名称）
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
+        // 自动弹出软键盘，方便用户输入
         showSoftInput();
+
+        // ===================== 区分：重命名 / 新建 =====================
+        // 如果是【重命名文件夹】
         if (!create) {
+            // 把当前文件夹的原有名称填入输入框
             if (mFocusNoteDataItem != null) {
                 etName.setText(mFocusNoteDataItem.getSnippet());
+                // 设置对话框标题：修改文件夹名称
                 builder.setTitle(getString(R.string.menu_folder_change_name));
             } else {
                 Log.e(TAG, "The long click data item is null");
                 return;
             }
         } else {
+            // 如果是【新建文件夹】，清空输入框
             etName.setText("");
+            // 设置对话框标题：新建文件夹
             builder.setTitle(this.getString(R.string.menu_create_folder));
         }
 
+        // 设置确定按钮（点击事件后面手动设置）
         builder.setPositiveButton(android.R.string.ok, null);
+        // 设置取消按钮
         builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
+                // 点击取消，隐藏软键盘
                 hideSoftInput(etName);
             }
         });
 
+        // 显示对话框
         final Dialog dialog = builder.setView(view).show();
+        // 获取对话框中的【确定】按钮
         final Button positive = (Button)dialog.findViewById(android.R.id.button1);
+
+        // ===================== 确定按钮点击事件 =====================
         positive.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
+                // 点击确定后，隐藏键盘
                 hideSoftInput(etName);
+                // 获取输入的文件夹名称
                 String name = etName.getText().toString();
+
+                // 检查文件夹名称是否已存在，存在则提示并返回
                 if (DataUtils.checkVisibleFolderName(mContentResolver, name)) {
                     Toast.makeText(NotesListActivity.this, getString(R.string.folder_exist, name),
                             Toast.LENGTH_LONG).show();
+                    // 选中输入框所有文字，方便重新输入
                     etName.setSelection(0, etName.length());
                     return;
                 }
+
+                // ===================== 执行操作 =====================
                 if (!create) {
+                    // 1. 重命名文件夹
                     if (!TextUtils.isEmpty(name)) {
                         ContentValues values = new ContentValues();
-                        values.put(NoteColumns.SNIPPET, name);
-                        values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER);
-                        values.put(NoteColumns.LOCAL_MODIFIED, 1);
-                        mContentResolver.update(Notes.CONTENT_NOTE_URI, values, NoteColumns.ID
-                                + "=?", new String[] {
-                            String.valueOf(mFocusNoteDataItem.getId())
-                        });
+                        values.put(NoteColumns.SNIPPET, name);          // 文件夹名称
+                        values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER); // 类型：文件夹
+                        values.put(NoteColumns.LOCAL_MODIFIED, 1);      // 标记本地已修改
+                        // 更新数据库
+                        mContentResolver.update(Notes.CONTENT_NOTE_URI, values, NoteColumns.ID + "=?",
+                                new String[] { String.valueOf(mFocusNoteDataItem.getId()) });
                     }
                 } else if (!TextUtils.isEmpty(name)) {
+                    // 2. 新建文件夹
                     ContentValues values = new ContentValues();
-                    values.put(NoteColumns.SNIPPET, name);
-                    values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER);
+                    values.put(NoteColumns.SNIPPET, name);          // 文件夹名称
+                    values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER); // 类型：文件夹
+                    // 插入数据库，创建新文件夹
                     mContentResolver.insert(Notes.CONTENT_NOTE_URI, values);
                 }
+
+                // 关闭对话框
                 dialog.dismiss();
             }
         });
 
+        // 初始状态：如果输入框为空，禁用确定按钮
         if (TextUtils.isEmpty(etName.getText())) {
             positive.setEnabled(false);
         }
+
+        // ===================== 输入框文字监听 =====================
         /**
-         * When the name edit text is null, disable the positive button
+         * 输入框内容变化时：
+         * 空 -> 确定按钮禁用
+         * 有文字 -> 确定按钮启用
          */
         etName.addTextChangedListener(new TextWatcher() {
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // TODO Auto-generated method stub
-
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // 输入框为空，禁用确定按钮
                 if (TextUtils.isEmpty(etName.getText())) {
                     positive.setEnabled(false);
                 } else {
+                    // 输入框有内容，启用确定按钮
                     positive.setEnabled(true);
                 }
             }
 
-            public void afterTextChanged(Editable s) {
-                // TODO Auto-generated method stub
-
-            }
+            public void afterTextChanged(Editable s) {}
         });
     }
 
+    /**
+     * 手机返回键点击事件
+     * 处理文件夹层级返回逻辑，而不是直接退出App
+     */
     @Override
     public void onBackPressed() {
+        // 根据当前界面状态，判断返回逻辑
         switch (mState) {
+            // 1. 当前在【普通子文件夹】里面
             case SUB_FOLDER:
+                // 切回根文件夹（所有笔记）
                 mCurrentFolderId = Notes.ID_ROOT_FOLDER;
+                // 状态改为：笔记列表
                 mState = ListEditState.NOTE_LIST;
+                // 重新加载根文件夹的笔记
                 startAsyncNotesListQuery();
+                // 隐藏标题栏
                 mTitleBar.setVisibility(View.GONE);
                 break;
+
+            // 2. 当前在【通话记录文件夹】里面
             case CALL_RECORD_FOLDER:
+                // 切回根文件夹
                 mCurrentFolderId = Notes.ID_ROOT_FOLDER;
+                // 状态改为：笔记列表
                 mState = ListEditState.NOTE_LIST;
+                // 显示【新建笔记】按钮
                 mAddNewNote.setVisibility(View.VISIBLE);
+                // 隐藏标题栏
                 mTitleBar.setVisibility(View.GONE);
+                // 重新加载数据
                 startAsyncNotesListQuery();
                 break;
+
+            // 3. 当前已经在【根目录（所有笔记）】
             case NOTE_LIST:
+                // 执行系统默认返回 → 退出APP
                 super.onBackPressed();
                 break;
+
             default:
                 break;
         }
     }
 
+    /**
+     * 更新桌面笔记小部件（Widget）
+     * 当笔记增删改后，同步刷新桌面添加的便签小组件
+     * @param appWidgetId 小部件的唯一ID
+     * @param appWidgetType 小部件类型（2x格式 / 4x格式）
+     */
     private void updateWidget(int appWidgetId, int appWidgetType) {
+        // 创建广播意图：用于通知桌面小部件更新
         Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+
+        // 根据小部件类型，绑定对应的更新处理类
         if (appWidgetType == Notes.TYPE_WIDGET_2X) {
+            // 2x2 大小的桌面小部件
             intent.setClass(this, NoteWidgetProvider_2x.class);
         } else if (appWidgetType == Notes.TYPE_WIDGET_4X) {
+            // 4x1 大小的桌面小部件
             intent.setClass(this, NoteWidgetProvider_4x.class);
         } else {
+            // 不支持的小部件类型，打印错误日志并退出
             Log.e(TAG, "Unspported widget type");
             return;
         }
 
+        // 把要更新的小部件ID放进广播里
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[] {
-            appWidgetId
+                appWidgetId
         });
 
+        // 发送广播，通知桌面小部件：数据变了，快刷新！
         sendBroadcast(intent);
+
+        // 设置返回结果，表示更新成功
         setResult(RESULT_OK, intent);
     }
 
+    /**
+     * 文件夹 长按菜单创建监听器
+     * 功能：长按文件夹时，弹出上下文操作菜单
+     */
     private final OnCreateContextMenuListener mFolderOnCreateContextMenuListener = new OnCreateContextMenuListener() {
+
+        /**
+         * 长按文件夹时，系统自动调用此方法创建菜单
+         * @param menu  上下文菜单对象
+         * @param v     被长按的视图（文件夹item）
+         * @param menuInfo  菜单信息
+         */
         public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
+            // 判断：当前有被长按选中的文件夹数据
             if (mFocusNoteDataItem != null) {
+                // 设置菜单的标题 = 文件夹的名称
                 menu.setHeaderTitle(mFocusNoteDataItem.getSnippet());
+
+                // 添加 菜单选项1：查看文件夹
                 menu.add(0, MENU_FOLDER_VIEW, 0, R.string.menu_folder_view);
+
+                // 添加 菜单选项2：删除文件夹
                 menu.add(0, MENU_FOLDER_DELETE, 0, R.string.menu_folder_delete);
+
+                // 添加 菜单选项3：重命名文件夹
                 menu.add(0, MENU_FOLDER_CHANGE_NAME, 0, R.string.menu_folder_change_name);
             }
         }
