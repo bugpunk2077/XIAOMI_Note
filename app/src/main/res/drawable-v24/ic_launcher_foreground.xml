@@ -1,3 +1,8 @@
+<!--
+  Android 矢量图标 (Vector Drawable)
+  作用：绘制一个带渐变阴影的白色卡通形象（类似小狗/机器人头部）
+  包含：白色主体图形 + 右上角线性渐变阴影
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"

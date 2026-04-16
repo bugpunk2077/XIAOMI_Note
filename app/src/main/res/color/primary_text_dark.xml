@@ -1,22 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- Copyright (c) 2010-2011, The MiCode Open Source Community (www.micode.net)
+<!--
+  文件名：XXX_color_selector.xml（建议命名）
+  文件作用：Android 颜色选择器（Color Selector），用于根据控件不同状态自动切换显示颜色
+  适用场景：TextView、Button、EditText 等控件的文字颜色、背景颜色动态切换
 
-     Licensed under the Apache License, Version 2.0 (the "License");
-     you may not use this file except in compliance with the License.
-     You may obtain a copy of the License at
-
-          http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing, software
-     distributed under the License is distributed on an "AS IS" BASIS,
-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     See the License for the specific language governing permissions and
-     limitations under the License.
+  版权声明：MiCode 开源社区版权，基于 Apache 2.0 开源协议
+  协议说明：允许自由使用、修改、分发，但需保留版权声明
 -->
 
+<!--
+  根标签：selector 颜色选择器
+  xmlns:android：Android XML 命名空间，固定写法，必须声明
+-->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    状态1：控件被按下时（state_pressed="true"）
+    颜色值：#88555555
+    格式：AARRGGBB（透明度+红+绿+蓝）
+    88：半透明  555555：深灰色
+  -->
   <item android:state_pressed="true" android:color="#88555555" />
+
+  <!--
+    状态2：控件被选中时（state_selected="true"）
+    颜色值：#ff999999
+    ff：完全不透明  999999：中灰色
+  -->
   <item android:state_selected="true" android:color="#ff999999" />
+
+  <!--
+    默认状态：无任何触发状态时显示的颜色（必须放在最后）
+    颜色值：#ff000000 → 纯黑色（完全不透明）
+  -->
   <item android:color="#ff000000" />
 </selector>

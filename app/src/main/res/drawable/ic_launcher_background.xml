@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 矢量可绘制文件 (Vector Drawable)
+  作用：绘制一个带网格线的绿色正方形背景（常用于棋盘格/网格背景）
+  特点：矢量图形，无限放大不失真，文件体积小
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

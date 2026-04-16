@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  Android 主界面布局文件
+  根布局：ConstraintLayout（约束布局，Android 官方推荐高级布局）
+  功能：页面中央显示 "Hello World!" 文本
+-->
+
+<!-- 根布局：约束布局，铺满整个屏幕 -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,6 +15,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!-- 文本控件：显示 Hello World! -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -15,5 +24,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+    <!-- 约束条件：上下左右都对齐父容器 → 让文字在屏幕正中央 -->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

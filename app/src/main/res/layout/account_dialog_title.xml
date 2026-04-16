@@ -15,12 +15,19 @@
      limitations under the License.
 -->
 
+<!--
+  账户对话框标题布局
+  作用：用于弹窗/对话框顶部，显示主标题 + 副标题
+  整体垂直排列
+-->
+
 <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:orientation="vertical"
         xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 主标题：账号对话框大标题 -->
     <TextView
         android:id="@+id/account_dialog_title"
         style="?android:attr/textAppearanceMedium"
@@ -32,6 +39,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"/>
 
+    <!-- 副标题：账号对话框说明文字/提示文字 -->
     <TextView
         android:id="@+id/account_dialog_subtitle"
         android:layout_width="fill_parent"
