@@ -20,11 +20,26 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+/**
+ * 这是一个闹钟接收器（广播接收器）。
+ * 核心作用是拦截由系统 AlarmManager 在指定时间发出的定时广播事件，
+ * 并随即唤起便签应用自己的闹铃提示界面（AlarmAlertActivity）。
+ */
 public class AlarmReceiver extends BroadcastReceiver {
+    
+    /**
+     * 当接收到便签提醒广播时执行的回调
+     */
     @Override
     public void onReceive(Context context, Intent intent) {
+        // 重定向当前 Intent 的目标类为闹钟通知的弹窗 Activity
         intent.setClass(context, AlarmAlertActivity.class);
+        
+        // 由于当前的执行上下文为 BroadcastReceiver 而不是普通的 Activity（非任务栈内），
+        // 需将其设为 FLAG_ACTIVITY_NEW_TASK ，告诉系统新开辟栈帧去启动这个 Activity。
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        
+        // 启动弹窗 Activity
         context.startActivity(intent);
     }
 }
