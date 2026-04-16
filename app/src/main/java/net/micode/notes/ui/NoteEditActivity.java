@@ -16,7 +16,7 @@
 
 package net.micode.notes.ui;
 
-import android.app.Activity;
+import androidx.activity.ComponentActivity;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -89,7 +89,7 @@ import java.util.regex.Pattern;
  * 便签编辑核心视图控制器。
  * 负责处理纯文本编辑、富文本渲染（图文混排）、清单模式切换以及实时数据保存。
  */
-public class NoteEditActivity extends Activity implements OnClickListener,
+public class NoteEditActivity extends ComponentActivity implements OnClickListener,
         NoteSettingChangedListener, OnTextViewChangeListener {
 
     private class HeadViewHolder {
@@ -178,12 +178,29 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 加载主要的编辑排版视图 XML
         this.setContentView(R.layout.note_edit);
 
+        // 如果该Activity没有持有被保留的实例恢复状态，并且外部传入的 Intent 解析初始化未达到目标条件，直接退出
         if (savedInstanceState == null && !initActivityState(getIntent())) {
             finish();
             return;
         }
+
+        // 使用 AndroidX 新特性来拦截和接管设备后退键行为
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if(clearSettingState()) {
+                    return;
+                }
+                saveNote();
+                // 执行标准的退出逻辑
+                finish();
+            }
+        });
+
+        // 初始化本页面各区域所有需要的子组件及颜色字体等资源设定
         initResources();
 
         //根据id获取添加图片按钮
@@ -387,12 +404,16 @@ public class NoteEditActivity extends Activity implements OnClickListener,
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        // 重写事件分发机制以增加一种全局监听：
+        // 当用户点击屏幕且背景颜色选择器面板(mNoteBgColorSelector)可见时
+        // 判断此次点击坐标是否落入了其面板区域之外。如果点击在外侧，就将面板隐藏。
         if (mNoteBgColorSelector.getVisibility() == View.VISIBLE
                 && !inRangeOfView(mNoteBgColorSelector, ev)) {
             mNoteBgColorSelector.setVisibility(View.GONE);
             return true;
         }
 
+        // 同理也针对于字号大小调节器弹窗面板
         if (mFontSizeSelector.getVisibility() == View.VISIBLE
                 && !inRangeOfView(mFontSizeSelector, ev)) {
             mFontSizeSelector.setVisibility(View.GONE);
@@ -401,6 +422,10 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         return super.dispatchTouchEvent(ev);
     }
 
+    /**
+     * 辅助判别方法：
+     * 判断发生的触摸事件 ev 中的点击坐标位置，是否落在给定目标 View（矩形边界）范围之内
+     */
     private boolean inRangeOfView(View view, MotionEvent ev) {
         int []location = new int[2];
         view.getLocationOnScreen(location);
@@ -504,7 +529,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         if (id == R.id.btn_set_bg_color) {
             mNoteBgColorSelector.setVisibility(View.VISIBLE);
             findViewById(sBgSelectorSelectionMap.get(mWorkingNote.getBgColorId())).setVisibility(
-                    -                    View.VISIBLE);
+                    View.VISIBLE);
         } else if (sBgSelectorBtnsMap.containsKey(id)) {
             findViewById(sBgSelectorSelectionMap.get(mWorkingNote.getBgColorId())).setVisibility(
                     View.GONE);
@@ -526,15 +551,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        if(clearSettingState()) {
-            return;
-        }
-
-        saveNote();
-        super.onBackPressed();
-    }
+// 由于旧版的 onBackPressed 已经被转移给 OnBackPressedDispatcher 处理，故将其删去。
 
     private boolean clearSettingState() {
         if (mNoteBgColorSelector.getVisibility() == View.VISIBLE) {
@@ -687,7 +704,11 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         if (mWorkingNote.getNoteId() > 0) {
             Intent intent = new Intent(this, AlarmReceiver.class);
             intent.setData(ContentUris.withAppendedId(Notes.CONTENT_NOTE_URI, mWorkingNote.getNoteId()));
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+
+            int pendingIntentFlags = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M ?
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE :
+                    PendingIntent.FLAG_UPDATE_CURRENT;
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, pendingIntentFlags);
             AlarmManager alarmManager = ((AlarmManager) getSystemService(ALARM_SERVICE));
             showAlertHeader();
             if(!set) {

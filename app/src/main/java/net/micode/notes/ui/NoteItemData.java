@@ -25,7 +25,12 @@ import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.NoteColumns;
 import net.micode.notes.tool.DataUtils;
 
-
+/**
+ * 封装在便签列表中展示的单一项记录的数据实体对象类。
+ * 它直接从数据库的游标 (Cursor) 中的单行数据中读取各种属性字段，
+ * 如便签的种类（便签/文件夹）、包含几条子便签、是否含有附件等。
+ * 这个类负责整理和准备数据，传递给 NotesListItem 等 UI 组件以进行具体的视图绘制与状态切换。
+ */
 public class NoteItemData {
     static final String [] PROJECTION = new String [] {
         NoteColumns.ID,
