@@ -16,17 +16,36 @@
 
 package net.micode.notes.gtask.exception;
 
+/**
+ * 自定义异常类：操作执行失败异常
+ * 专门用于 Google Task 同步模块，当同步相关操作执行失败时抛出
+ * 继承自 RuntimeException，属于运行时异常，无需强制捕获
+ */
 public class ActionFailureException extends RuntimeException {
+    // 序列化版本ID，用于Java对象序列化，固定值保证兼容性
     private static final long serialVersionUID = 4425249765923293627L;
 
+    /**
+     * 无参构造方法
+     * 创建一个不带错误信息的异常对象
+     */
     public ActionFailureException() {
         super();
     }
 
+    /**
+     * 带错误提示信息的构造方法
+     * @param paramString 异常的描述信息（失败原因）
+     */
     public ActionFailureException(String paramString) {
         super(paramString);
     }
 
+    /**
+     * 带错误提示信息 + 异常根源的构造方法
+     * @param paramString 异常的描述信息
+     * @param paramThrowable 引发该异常的原始异常（用于追踪错误根源）
+     */
     public ActionFailureException(String paramString, Throwable paramThrowable) {
         super(paramString, paramThrowable);
     }

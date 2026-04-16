@@ -16,17 +16,36 @@
 
 package net.micode.notes.gtask.exception;
 
+/**
+ * 自定义异常类：网络操作失败异常
+ * 专门用于 Google Task 同步模块，当网络请求、网络连接失败时抛出
+ * 继承自普通 Exception，属于检查型异常，需要显式捕获或抛出
+ */
 public class NetworkFailureException extends Exception {
+    // 序列化版本ID，保证对象序列化与反序列化的兼容性
     private static final long serialVersionUID = 2107610287180234136L;
 
+    /**
+     * 无参构造方法
+     * 创建一个不带错误信息的网络异常对象
+     */
     public NetworkFailureException() {
         super();
     }
 
+    /**
+     * 带错误提示信息的构造方法
+     * @param paramString 异常描述信息，说明网络失败原因
+     */
     public NetworkFailureException(String paramString) {
         super(paramString);
     }
 
+    /**
+     * 带错误信息 + 原始异常的构造方法
+     * @param paramString 异常描述信息
+     * @param paramThrowable 引发该网络异常的底层异常（用于排查问题）
+     */
     public NetworkFailureException(String paramString, Throwable paramThrowable) {
         super(paramString, paramThrowable);
     }
