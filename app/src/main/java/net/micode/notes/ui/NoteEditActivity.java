@@ -173,6 +173,28 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
     private String mUserQuery;
     private Pattern mPattern;
 
+    // ==== Undo/Redo 相关的状态变量 ====
+    private java.util.Stack<String> mUndoStack = new java.util.Stack<String>();
+    private java.util.Stack<String> mRedoStack = new java.util.Stack<String>();
+    private boolean mIsUndoRedoAction = false;
+    private String mLastSavedText;
+
+    private final android.os.Handler mTypingHandler = new android.os.Handler();
+    private final Runnable mTypingTimeoutRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mNoteEditor != null && !mIsUndoRedoAction) {
+                String currentText = mNoteEditor.getText().toString();
+                if (!currentText.equals(mLastSavedText)) {
+                    if (mUndoStack.size() >= 50) mUndoStack.removeElementAt(0);
+                    mUndoStack.push(mLastSavedText);
+                    mLastSavedText = currentText;
+                    mRedoStack.clear();
+                }
+            }
+        }
+    };
+
     private final int PHOTO_REQUEST=1;
 
     @Override
@@ -356,6 +378,11 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
         int initialCount = mWorkingNote.getContent() != null ? mWorkingNote.getContent().length() : 0;
         mNoteHeaderHolder.tvModified.setText(mNoteHeaderHolder.mBaseDateTimeStr + "    字数: " + initialCount);
 
+        // 初始化 Undo 记录状态
+        mLastSavedText = mWorkingNote.getContent() != null ? mWorkingNote.getContent() : "";
+        mUndoStack.clear();
+        mRedoStack.clear();
+
         /**
          * TODO: Add the menu for setting alert. Currently disable it because the DateTimePicker
          * is not ready
@@ -467,6 +494,12 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
                 if (mNoteHeaderHolder.mBaseDateTimeStr != null && mNoteHeaderHolder.tvModified != null) {
                     int currentCount = (s == null) ? 0 : s.length();
                     mNoteHeaderHolder.tvModified.setText(mNoteHeaderHolder.mBaseDateTimeStr + "    字数: " + currentCount);
+                }
+
+                // --- 触发 Undo/Redo 的历史状态快照保存 ---
+                if (!mIsUndoRedoAction && s != null) {
+                    mTypingHandler.removeCallbacks(mTypingTimeoutRunnable);
+                    mTypingHandler.postDelayed(mTypingTimeoutRunnable, 800); // 800ms无输入视为一次连续输入结束
                 }
             }
         });
@@ -587,6 +620,9 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_normal_mode);
         } else {
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_list_mode);
+            // === 仅在普通编辑模式下提供撤销重做按钮 ===
+            menu.add(0, 10001, 0, "撤销").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+            menu.add(0, 10002, 0, "重做").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         }
         if (mWorkingNote.hasClockAlert()) {
             menu.findItem(R.id.menu_alert).setVisible(false);
@@ -615,6 +651,12 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
                     });
             builder.setNegativeButton(android.R.string.cancel, null);
             builder.show();
+        } else if (itemId == 10001) { // 撤销
+            undo();
+            return true;
+        } else if (itemId == 10002) { // 重做
+            redo();
+            return true;
         } else if (itemId == R.id.menu_font_size) {
             mFontSizeSelector.setVisibility(View.VISIBLE);
             findViewById(sFontSelectorSelectionMap.get(mFontSizeId)).setVisibility(View.VISIBLE);
@@ -1126,6 +1168,44 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
                 break;
         }
     }
+    // ================== 撤销/重做 逻辑核心 ==================
+    private void undo() {
+        String currentText = mNoteEditor.getText().toString();
+        // 如果当前有未提交到历史栈的修改，先重置到上一个稳定状态
+        if (!currentText.equals(mLastSavedText)) {
+            mRedoStack.push(currentText);
+            mIsUndoRedoAction = true;
+            mNoteEditor.setText(mLastSavedText);
+            mNoteEditor.setSelection(mLastSavedText.length());
+            mIsUndoRedoAction = false;
+        } else if (!mUndoStack.isEmpty()) {
+            mIsUndoRedoAction = true;
+            mRedoStack.push(currentText);
+            String text = mUndoStack.pop();
+            mNoteEditor.setText(text);
+            mNoteEditor.setSelection(text.length());
+            mLastSavedText = text;
+            mIsUndoRedoAction = false;
+        } else {
+            Toast.makeText(this, "没有可撤销的内容", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void redo() {
+        if (!mRedoStack.isEmpty()) {
+            mIsUndoRedoAction = true;
+            String currentText = mNoteEditor.getText().toString();
+            mUndoStack.push(currentText);
+            String text = mRedoStack.pop();
+            mNoteEditor.setText(text);
+            mNoteEditor.setSelection(text.length());
+            mLastSavedText = text;
+            mIsUndoRedoAction = false;
+        } else {
+            Toast.makeText(this, "没有可重做的内容", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     //////////////////////////////////////////////////
     private void convertToImage() {
         NoteEditText noteEditText = (NoteEditText) findViewById(R.id.note_edit_view); //获取当前的edit
