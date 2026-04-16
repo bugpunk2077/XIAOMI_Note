@@ -14,12 +14,15 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
+<!--
+  便签清单列表项布局（代办事项单项）
+  作用：用于小米便签的清单模式，包含 复选框 + 文本输入框
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content">
-
+    <!-- 复选框：标记任务完成/未完成 -->
     <CheckBox
         android:id="@+id/cb_edit_item"
         android:layout_width="wrap_content"
@@ -27,7 +30,7 @@
         android:checked="false"
         android:focusable="false"
         android:layout_gravity="top|left" />
-
+    <!-- 自定义编辑框：清单内容输入 -->
     <net.micode.notes.ui.NoteEditText
         android:id="@+id/et_edit_text"
         android:layout_width="fill_parent"

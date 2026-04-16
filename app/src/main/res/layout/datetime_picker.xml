@@ -13,12 +13,16 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
+<!--
+  根布局：水平线性布局
+  作用：将 4 个时间选择器横向排列，并整体水平居中
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal"
     android:layout_gravity="center_horizontal"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
-
+    <!-- 日期选择器：用于选择日期 -->
     <NumberPicker
         android:id="@+id/date"
         android:layout_width="120dip"
@@ -26,7 +30,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         />
-
+    <!-- 小时选择器：用于选择小时 -->
     <NumberPicker
         android:id="@+id/hour"
         android:layout_width="50dip"
@@ -35,7 +39,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         />
-
+    <!-- 分钟选择器：用于选择分钟 -->
     <NumberPicker
         android:id="@+id/minute"
         android:layout_width="50dip"
@@ -44,7 +48,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         />
-
+    <!-- 上/下午选择器：用于选择 AM / PM -->
     <NumberPicker
         android:id="@+id/amPm"
         android:layout_width="50dip"

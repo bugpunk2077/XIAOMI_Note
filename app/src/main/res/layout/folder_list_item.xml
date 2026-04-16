@@ -14,12 +14,15 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
+<!--
+  文件夹名称显示布局
+  作用：用于列表项中展示文件夹名称，居中显示
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:minHeight="50dip" >
-
+    <!-- 文件夹名称文本控件 -->
     <TextView
         android:id="@+id/tv_folder_name"
         android:layout_width="match_parent"

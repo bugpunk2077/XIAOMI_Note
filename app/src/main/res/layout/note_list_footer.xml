@@ -14,7 +14,11 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
+<!--
+  列表底部占位视图
+  作用：给 ListView 底部预留 100dp 空白高度，防止内容被底部按钮遮挡
+  特点：默认不可见、不获取焦点、带背景图
+-->
 <View
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"

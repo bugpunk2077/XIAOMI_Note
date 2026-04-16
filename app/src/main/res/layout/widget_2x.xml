@@ -14,15 +14,21 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
+<!--
+  小米便签 - 桌面小部件布局 (Widget)
+  作用：在手机桌面显示便签内容的卡片
+  尺寸：146dp × 146dp 正方形
+-->
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="146dip"
     android:layout_height="146dip">
+    <!-- 小部件背景图片 -->
     <ImageView
         android:id="@+id/widget_bg_image"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
+    <!-- 小部件文字内容：显示便签预览文本 -->
     <TextView
         android:id="@+id/widget_text"
         android:layout_width="fill_parent"

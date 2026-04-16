@@ -15,12 +15,17 @@
      limitations under the License.
 -->
 
+<!--
+  小米便签 - 同步设置界面布局
+  作用：提供立即同步按钮 + 同步状态提示文字
+-->
 <LinearLayout
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        xmlns:android="http://schemas.android.com/apk/res/android">
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 立即同步按钮 -->
     <Button
         android:id="@+id/preference_sync_button"
         android:layout_width="fill_parent"
@@ -31,6 +36,7 @@
         style="?android:attr/textAppearanceMedium"
         android:text="@string/preferences_button_sync_immediately"/>
 
+    <!-- 同步状态提示文字（默认隐藏） -->
     <TextView
         android:id="@+id/prefenerece_sync_status_textview"
         android:layout_width="wrap_content"
