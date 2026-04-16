@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,6 +43,7 @@ import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ImageSpan;
@@ -84,9 +85,13 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
+/**
+ * 便签编辑核心视图控制器。
+ * 负责处理纯文本编辑、富文本渲染（图文混排）、清单模式切换以及实时数据保存。
+ */
 public class NoteEditActivity extends Activity implements OnClickListener,
         NoteSettingChangedListener, OnTextViewChangeListener {
+
     private class HeadViewHolder {
         public TextView tvModified;
 
@@ -95,6 +100,12 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         public TextView tvAlertDate;
 
         public ImageView ibSetBgColor;
+
+        /**
+         * 缓存便签的原始修改时间字符串（例如 "4/15/2026, 10:11 AM"）。
+         * 作为基准前缀，用于在正文变动时进行轻量级的字符串拼接以显示字数，避免重复触发高昂的时间格式化运算。
+         */
+        public String mBaseDateTimeStr;
     }
 
     private static final Map<Integer, Integer> sBgSelectorBtnsMap = new HashMap<Integer, Integer>();
@@ -165,7 +176,6 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     private final int PHOTO_REQUEST=1;
 
     @Override
-
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.note_edit);
@@ -301,6 +311,9 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         initNoteScreen();
     }
 
+    /**
+     * 渲染视图模型，完成页面数据的首次填充绑定。
+     */
     private void initNoteScreen() {
         mNoteEditor.setTextAppearance(this, TextAppearanceResources
                 .getTexAppearanceResource(mFontSizeId));
@@ -316,10 +329,15 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         mHeadViewPanel.setBackgroundResource(mWorkingNote.getTitleBgResId());
         mNoteEditorPanel.setBackgroundResource(mWorkingNote.getBgColorResId());
 
-        mNoteHeaderHolder.tvModified.setText(DateUtils.formatDateTime(this,
+        // 缓存修改时间字符串
+        mNoteHeaderHolder.mBaseDateTimeStr = DateUtils.formatDateTime(this,
                 mWorkingNote.getModifiedDate(), DateUtils.FORMAT_SHOW_DATE
                         | DateUtils.FORMAT_NUMERIC_DATE | DateUtils.FORMAT_SHOW_TIME
-                        | DateUtils.FORMAT_SHOW_YEAR));
+                        | DateUtils.FORMAT_SHOW_YEAR);
+
+        // 初始化时，提取初始字符长度并拼接到修改时间后方
+        int initialCount = mWorkingNote.getContent() != null ? mWorkingNote.getContent().length() : 0;
+        mNoteHeaderHolder.tvModified.setText(mNoteHeaderHolder.mBaseDateTimeStr + "    字数: " + initialCount);
 
         /**
          * TODO: Add the menu for setting alert. Currently disable it because the DateTimePicker
@@ -392,11 +410,14 @@ public class NoteEditActivity extends Activity implements OnClickListener,
                 || ev.getX() > (x + view.getWidth())
                 || ev.getY() < y
                 || ev.getY() > (y + view.getHeight())) {
-                    return false;
-                }
+            return false;
+        }
         return true;
     }
 
+    /**
+     * 视图组件实例化及事件监听绑定。
+     */
     private void initResources() {
         mHeadViewPanel = findViewById(R.id.note_title);
         mNoteHeaderHolder = new HeadViewHolder();
@@ -405,7 +426,26 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         mNoteHeaderHolder.tvAlertDate = (TextView) findViewById(R.id.tv_alert_date);
         mNoteHeaderHolder.ibSetBgColor = (ImageView) findViewById(R.id.btn_set_bg_color);
         mNoteHeaderHolder.ibSetBgColor.setOnClickListener(this);
+
         mNoteEditor = (EditText) findViewById(R.id.note_edit_view);
+
+        // 挂载普通文本模式下的文本防抖监听，实时刷新时间视图尾部的字数统计
+        mNoteEditor.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (mNoteHeaderHolder.mBaseDateTimeStr != null && mNoteHeaderHolder.tvModified != null) {
+                    int currentCount = (s == null) ? 0 : s.length();
+                    mNoteHeaderHolder.tvModified.setText(mNoteHeaderHolder.mBaseDateTimeStr + "    字数: " + currentCount);
+                }
+            }
+        });
+
         mNoteEditorPanel = findViewById(R.id.sv_note_edit);
         mNoteBgColorSelector = findViewById(R.id.note_bg_color_selector);
         for (int id : sBgSelectorBtnsMap.keySet()) {
@@ -452,7 +492,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         }
 
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[] {
-            mWorkingNote.getWidgetId()
+                mWorkingNote.getWidgetId()
         });
 
         sendBroadcast(intent);
@@ -581,7 +621,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         DateTimePickerDialog d = new DateTimePickerDialog(this, System.currentTimeMillis());
         d.setOnDateTimeSetListener(new OnDateTimeSetListener() {
             public void OnDateTimeSet(AlertDialog dialog, long date) {
-                mWorkingNote.setAlertDate(date	, true);
+                mWorkingNote.setAlertDate(date  , true);
             }
         });
         d.show();
@@ -749,6 +789,9 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         return spannable;
     }
 
+    /**
+     * 构建清单模式（CheckList）下的单行视图组件。
+     */
     private View getListItem(String item, int index) {
         View view = LayoutInflater.from(this).inflate(R.layout.note_edit_list_item, null);
         final NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
@@ -775,6 +818,33 @@ public class NoteEditActivity extends Activity implements OnClickListener,
         }
 
         edit.setOnTextViewChangeListener(this);
+
+        // 挂载清单模式下的文本防抖监听，实时遍历计算清单总字数并刷新顶部显示
+        edit.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (mNoteHeaderHolder.mBaseDateTimeStr != null && mNoteHeaderHolder.tvModified != null) {
+                    int count = 0;
+                    for (int i = 0; i < mEditTextList.getChildCount(); i++) {
+                        View childView = mEditTextList.getChildAt(i);
+                        if (childView != null) {
+                            NoteEditText childEdit = (NoteEditText) childView.findViewById(R.id.et_edit_text);
+                            if (childEdit != null && childEdit.getText() != null) {
+                                count += childEdit.getText().length();
+                            }
+                        }
+                    }
+                    mNoteHeaderHolder.tvModified.setText(mNoteHeaderHolder.mBaseDateTimeStr + "    字数: " + count);
+                }
+            }
+        });
+
         edit.setIndex(index);
         edit.setText(getHighlightQueryResult(item, mUserQuery));
         return view;
@@ -895,6 +965,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     private void showToast(int resId, int duration) {
         Toast.makeText(this, resId, duration).show();
     }
+
     //获取文件的real path
     public String getPath(final Context context, final Uri uri) {
 
