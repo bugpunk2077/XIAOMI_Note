@@ -28,6 +28,11 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.NumberPicker;
 
+/**
+ * 这是一个自定义视图组件 (组合了若干个 NumberPicker)，
+ * 用于完成用户操作中常见的交互功能——配置和选择日期时间。
+ * 分别控制 月日周、小时、分钟以及上下午(AM/PM)，并同时支持处理和回显 12/24 小时制的时间视图。
+ */
 public class DateTimePicker extends FrameLayout {
 
     private static final boolean DEFAULT_ENABLE_STATE = true;
