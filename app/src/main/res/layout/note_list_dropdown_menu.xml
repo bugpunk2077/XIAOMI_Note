@@ -14,14 +14,18 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
+<!--
+  小米便签 - 顶部导航栏布局
+  作用：包含菜单按钮，用于展开选择/操作菜单
+  根布局：水平线性布局
+-->
 <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/navigation_bar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal">
-
+    <!-- 导航栏菜单按钮（展开更多选项） -->
     <Button android:id="@+id/selection_menu"
             android:divider="?android:attr/listDividerAlertDialog"
             android:singleLine="true"
