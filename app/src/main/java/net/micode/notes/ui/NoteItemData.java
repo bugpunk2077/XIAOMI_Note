@@ -81,57 +81,87 @@ public class NoteItemData {
     private boolean mIsOneNoteFollowingFolder;
     private boolean mIsMultiNotesFollowingFolder;
 
+    /**
+     * 构造方法：将数据库查询结果 Cursor 封装成 NoteItemData 数据对象
+     * 作用：把数据库里的一条记录，转换成 Java 可使用的对象
+     */
     public NoteItemData(Context context, Cursor cursor) {
-        mId = cursor.getLong(ID_COLUMN);
-        mAlertDate = cursor.getLong(ALERTED_DATE_COLUMN);
-        mBgColorId = cursor.getInt(BG_COLOR_ID_COLUMN);
-        mCreatedDate = cursor.getLong(CREATED_DATE_COLUMN);
-        mHasAttachment = (cursor.getInt(HAS_ATTACHMENT_COLUMN) > 0) ? true : false;
-        mModifiedDate = cursor.getLong(MODIFIED_DATE_COLUMN);
-        mNotesCount = cursor.getInt(NOTES_COUNT_COLUMN);
-        mParentId = cursor.getLong(PARENT_ID_COLUMN);
-        mSnippet = cursor.getString(SNIPPET_COLUMN);
+        // 从数据库游标中获取各项字段数据
+        mId = cursor.getLong(ID_COLUMN);                             // 笔记/文件夹唯一ID
+        mAlertDate = cursor.getLong(ALERTED_DATE_COLUMN);           // 提醒时间
+        mBgColorId = cursor.getInt(BG_COLOR_ID_COLUMN);             // 背景颜色ID
+        mCreatedDate = cursor.getLong(CREATED_DATE_COLUMN);         // 创建时间
+        mHasAttachment = (cursor.getInt(HAS_ATTACHMENT_COLUMN) > 0) ? true : false; // 是否有附件
+        mModifiedDate = cursor.getLong(MODIFIED_DATE_COLUMN);       // 修改时间
+        mNotesCount = cursor.getInt(NOTES_COUNT_COLUMN);            // 文件夹内笔记数量
+        mParentId = cursor.getLong(PARENT_ID_COLUMN);               // 父文件夹ID
+        mSnippet = cursor.getString(SNIPPET_COLUMN);                // 笔记内容摘要
+
+        // 移除文本中的复选框标记，让列表显示的纯文本更干净
         mSnippet = mSnippet.replace(NoteEditActivity.TAG_CHECKED, "").replace(
                 NoteEditActivity.TAG_UNCHECKED, "");
-        mType = cursor.getInt(TYPE_COLUMN);
-        mWidgetId = cursor.getInt(WIDGET_ID_COLUMN);
-        mWidgetType = cursor.getInt(WIDGET_TYPE_COLUMN);
 
+        mType = cursor.getInt(TYPE_COLUMN);                         // 类型：笔记/文件夹
+        mWidgetId = cursor.getInt(WIDGET_ID_COLUMN);                // 桌面小工具ID
+        mWidgetType = cursor.getInt(WIDGET_TYPE_COLUMN);            // 桌面小工具类型
+
+        // 初始化通话记录相关的号码和联系人名称
         mPhoneNumber = "";
+
+        // 判断：如果当前笔记属于【通话记录文件夹】
         if (mParentId == Notes.ID_CALL_RECORD_FOLDER) {
+            // 根据笔记ID查询对应的通话号码
             mPhoneNumber = DataUtils.getCallNumberByNoteId(context.getContentResolver(), mId);
             if (!TextUtils.isEmpty(mPhoneNumber)) {
+                // 根据号码查询联系人姓名
                 mName = Contact.getContact(context, mPhoneNumber);
+                // 如果没有姓名，直接显示电话号码
                 if (mName == null) {
                     mName = mPhoneNumber;
                 }
             }
         }
 
+        // 防止空指针，姓名为空时赋值空字符串
         if (mName == null) {
             mName = "";
         }
+
+        // 检查当前条目在列表中的位置（用于设置背景样式）
         checkPostion(cursor);
     }
 
+    /**
+     * 检查当前条目在列表中的位置信息
+     * 作用：判断是第一条、最后一条、单独一条、还是跟在文件夹后面
+     * 用于给列表条目设置不同的圆角背景，优化UI显示效果
+     */
     private void checkPostion(Cursor cursor) {
-        mIsLastItem = cursor.isLast() ? true : false;
-        mIsFirstItem = cursor.isFirst() ? true : false;
-        mIsOnlyOneItem = (cursor.getCount() == 1);
-        mIsMultiNotesFollowingFolder = false;
-        mIsOneNoteFollowingFolder = false;
+        mIsLastItem = cursor.isLast() ? true : false;               // 是否为最后一条
+        mIsFirstItem = cursor.isFirst() ? true : false;             // 是否为第一条
+        mIsOnlyOneItem = (cursor.getCount() == 1);                  // 是否是列表中唯一一条
+        mIsMultiNotesFollowingFolder = false;                       // 标记：是否是文件夹后多条笔记中的一条
+        mIsOneNoteFollowingFolder = false;                          // 标记：是否是文件夹后唯一一条笔记
 
+        // 仅对【非第一条的笔记】进行位置判断
         if (mType == Notes.TYPE_NOTE && !mIsFirstItem) {
-            int position = cursor.getPosition();
+            int position = cursor.getPosition();                   // 记录当前游标位置
+
+            // 将游标移动到上一条，判断前一条是否是文件夹
             if (cursor.moveToPrevious()) {
+                // 如果上一条是 文件夹 或 系统文件夹
                 if (cursor.getInt(TYPE_COLUMN) == Notes.TYPE_FOLDER
                         || cursor.getInt(TYPE_COLUMN) == Notes.TYPE_SYSTEM) {
+
+                    // 判断当前笔记后面是否还有其他笔记
                     if (cursor.getCount() > (position + 1)) {
-                        mIsMultiNotesFollowingFolder = true;
+                        mIsMultiNotesFollowingFolder = true;        // 后面还有多条笔记
                     } else {
-                        mIsOneNoteFollowingFolder = true;
+                        mIsOneNoteFollowingFolder = true;           // 后面没有笔记了，只有这一条
                     }
                 }
+
+                // 游标移回原来的位置，保证数据读取正确
                 if (!cursor.moveToNext()) {
                     throw new IllegalStateException("cursor move to previous but can't move back");
                 }
