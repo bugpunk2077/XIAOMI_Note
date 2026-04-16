@@ -23,22 +23,34 @@ import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.tool.ResourceParser;
 
-
+/**
+ * 4x4 尺寸（大号）桌面便签小部件的提供者实现。
+ */
 public class NoteWidgetProvider_4x extends NoteWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         super.update(context, appWidgetManager, appWidgetIds);
     }
 
+    /**
+     * @return 返回该小部件对应的 4x4 布局资源ID
+     */
     protected int getLayoutId() {
         return R.layout.widget_4x;
     }
 
+    /**
+     * 根据用户的设置，获取该 4x4 小部件应当显示的背景资源图片。
+     * @param bgId 便签的背景 ID
+     */
     @Override
     protected int getBgResourceId(int bgId) {
         return ResourceParser.WidgetBgResources.getWidget4xBgResource(bgId);
     }
 
+    /**
+     * @return 返回小部件对应的类型标识，以便数据库存储分类。
+     */
     @Override
     protected int getWidgetType() {
         return Notes.TYPE_WIDGET_4X;

@@ -23,23 +23,35 @@ import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.tool.ResourceParser;
 
-
+/**
+ * 2x2 尺寸（小号）桌面便签小部件的提供者实现。
+ */
 public class NoteWidgetProvider_2x extends NoteWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         super.update(context, appWidgetManager, appWidgetIds);
     }
 
+    /**
+     * @return 返回该小部件对应的 2x2 布局资源ID
+     */
     @Override
     protected int getLayoutId() {
         return R.layout.widget_2x;
     }
 
+    /**
+     * 根据用户的设置，获取该 2x2 小部件应当显示的背景资源图片。
+     * @param bgId 便签的背景 ID
+     */
     @Override
     protected int getBgResourceId(int bgId) {
         return ResourceParser.WidgetBgResources.getWidget2xBgResource(bgId);
     }
 
+    /**
+     * @return 返回小部件对应的类型标识，以便数据库存储分类。
+     */
     @Override
     protected int getWidgetType() {
         return Notes.TYPE_WIDGET_2X;

@@ -32,7 +32,12 @@ import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NoteEditActivity;
 import net.micode.notes.ui.NotesListActivity;
 
+/**
+ * 桌面小部件 (Widget) 的通信基类。
+ * 负责桌面小部件的更新、点击事件绑定以及小部件删除时的数据清理工作。
+ */
 public abstract class NoteWidgetProvider extends AppWidgetProvider {
+    // 数据库查询字段：获取小部件关联便签的 ID、背景颜色和内容片段
     public static final String [] PROJECTION = new String [] {
         NoteColumns.ID,
         NoteColumns.BG_COLOR_ID,
@@ -45,6 +50,10 @@ public abstract class NoteWidgetProvider extends AppWidgetProvider {
 
     private static final String TAG = "NoteWidgetProvider";
 
+    /**
+     * 当小部件从桌面上被删除时触发。
+     * 作用：在数据库中将该便签绑定的 widget_id 重置为无效状态（解绑）。
+     */
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
         ContentValues values = new ContentValues();
@@ -57,6 +66,9 @@ public abstract class NoteWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    /**
+     * 根据 widgetId 查询对应的便签信息，排除已放入回收站的便签。
+     */
     private Cursor getNoteWidgetInfo(Context context, int widgetId) {
         return context.getContentResolver().query(Notes.CONTENT_NOTE_URI,
                 PROJECTION,
@@ -69,6 +81,10 @@ public abstract class NoteWidgetProvider extends AppWidgetProvider {
         update(context, appWidgetManager, appWidgetIds, false);
     }
 
+    /**
+     * 更新小部件的显示内容（背景、文字）并绑定点击跳转。
+     * @param privacyMode 隐私模式下，隐藏具体文字内容
+     */
     private void update(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds,
             boolean privacyMode) {
         for (int i = 0; i < appWidgetIds.length; i++) {
@@ -107,15 +123,16 @@ public abstract class NoteWidgetProvider extends AppWidgetProvider {
                  * Generate the pending intent to start host for the widget
                  */
                 PendingIntent pendingIntent = null;
+                int pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
                 if (privacyMode) {
                     rv.setTextViewText(R.id.widget_text,
                             context.getString(R.string.widget_under_visit_mode));
                     pendingIntent = PendingIntent.getActivity(context, appWidgetIds[i], new Intent(
-                            context, NotesListActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
+                            context, NotesListActivity.class), pendingIntentFlags);
                 } else {
                     rv.setTextViewText(R.id.widget_text, snippet);
                     pendingIntent = PendingIntent.getActivity(context, appWidgetIds[i], intent,
-                            PendingIntent.FLAG_UPDATE_CURRENT);
+                            pendingIntentFlags);
                 }
 
                 rv.setOnClickPendingIntent(R.id.widget_text, pendingIntent);
